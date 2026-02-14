@@ -7,7 +7,7 @@ import io
 st.title("DWT Invisible Watermark Demo")
 
 uploaded_file = st.file_uploader("画像をアップロード", type=["jpg", "jpeg", "png"])
-watermark_text = st.text_input("ウォーターマーク文字列", "RyutoYoda")
+watermark_text = st.text_input("ウォーターマーク文字列", "埋め込みたい文字列")
 
 def embed_watermark(image, text):
     img = image.convert("RGB")
