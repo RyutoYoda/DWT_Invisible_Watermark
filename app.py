@@ -7,6 +7,30 @@ import uuid
 import duckdb
 import hashlib
 from datetime import datetime
+import base64
+
+# -----------------------
+# 背景画像設定
+# -----------------------
+def set_background(image_path):
+    with open(image_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{data}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_background("watermark.png")
 
 # -----------------------
 # DB初期化
