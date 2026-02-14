@@ -115,7 +115,7 @@ mode = st.radio("モード選択", ["埋め込み", "照会"])
 # -----------------------
 if mode == "埋め込み":
     uploaded_file = st.file_uploader("画像アップロード", type=["jpg", "jpeg", "png"])
-    owner = st.text_input("所有者名", "RyutoYoda")
+    owner = st.text_input("所有者名", "AI太郎")
 
     watermark_text = st.text_input("ウォーターマーク文字列", "埋め込みたい文字列")
 
