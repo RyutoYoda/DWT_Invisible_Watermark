@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS images (
 """)
 
 # -----------------------
-# ハッシュ生成
+# ハッシュ
 # -----------------------
 def sha256_bytes(data):
     return hashlib.sha256(data).hexdigest()
@@ -42,8 +42,8 @@ def embed_watermark(image, text):
     LL, (LH, HL, HH) = pywt.dwt2(blue, 'haar')
 
     flat_LL = LL.flatten()
-    delta = 50.0
-    repeat = 2
+    delta = 80.0
+    repeat = 3
 
     for i, bit in enumerate(bits):
         for r in range(repeat):
@@ -52,9 +52,9 @@ def embed_watermark(image, text):
                 val = flat_LL[idx]
                 quantized = delta * np.round(val / delta)
                 if bit == 1:
-                    flat_LL[idx] = quantized + delta / 4
+                    flat_LL[idx] = quantized + delta / 3
                 else:
-                    flat_LL[idx] = quantized - delta / 4
+                    flat_LL[idx] = quantized - delta / 3
 
     LL_wm = flat_LL.reshape(LL.shape)
 
@@ -63,8 +63,7 @@ def embed_watermark(image, text):
     blue_wm = np.clip(blue_wm, 0, 255)
 
     img_array[:, :, 2] = blue_wm
-    result = Image.fromarray(img_array.astype(np.uint8))
-    return result
+    return Image.fromarray(img_array.astype(np.uint8))
 
 # -----------------------
 # DWT抽出
@@ -77,11 +76,10 @@ def extract_watermark(image):
     LL, _ = pywt.dwt2(blue, 'haar')
     flat_LL = LL.flatten()
 
-    delta = 50.0
-    repeat = 2
-    bits = []
-
+    delta = 80.0
+    repeat = 3
     total_bits = 32 * 8
+    bits = []
 
     for i in range(total_bits):
         votes = []
@@ -106,17 +104,16 @@ def extract_watermark(image):
 # -----------------------
 # UI
 # -----------------------
-st.title("🛡️ DWT Invisible Watermark App")
+st.title("DWT Invisible Watermark App")
 
 mode = st.radio("モード選択", ["埋め込み", "照会"])
 
 # -----------------------
-# 埋め込みモード
+# 埋め込み
 # -----------------------
 if mode == "埋め込み":
-    uploaded_file = st.file_uploader("画像アップロード", type=["jpg", "jpeg", "png"])
-    owner = st.text_input("所有者名", "AI太郎")
-
+    uploaded_file = st.file_uploader("画像アップロード", type=["png", "jpg", "jpeg"])
+    owner = st.text_input("所有者名", "owner_name")
     watermark_text = st.text_input("ウォーターマーク文字列", "埋め込みたい文字列")
 
     if uploaded_file and owner:
@@ -124,10 +121,10 @@ if mode == "埋め込み":
         original_hash = sha256_bytes(image_bytes)
         image = Image.open(io.BytesIO(image_bytes))
 
-        # UUID生成
-        new_uuid = str(uuid.uuid4())
+        # 安定用：UUIDは32文字hex
+        new_uuid = uuid.uuid4().hex
 
-        # 埋め込む文字列をUUID優先（追跡用）
+        # 埋め込み文字列はUUID（追跡用）
         final_text = new_uuid
 
         watermarked = embed_watermark(image, final_text)
@@ -136,30 +133,31 @@ if mode == "埋め込み":
         INSERT INTO images VALUES (?, ?, ?, ?)
         """, (new_uuid, owner, datetime.now(), original_hash))
 
-        st.success(f"UUID発行: {new_uuid}")
+        st.success(f"発行UUID: {new_uuid}")
 
         st.image(watermarked, caption="ウォーターマーク付き画像")
 
         buf = io.BytesIO()
-        watermarked.save(buf, format="JPEG", quality=95)
+        watermarked.save(buf, format="PNG")  # PNG保存で劣化防止
+
         st.download_button(
             label="ダウンロード",
             data=buf.getvalue(),
-            file_name="watermarked.jpg",
-            mime="image/jpeg"
+            file_name="watermarked.png",
+            mime="image/png"
         )
 
 # -----------------------
-# 照会モード
+# 照会
 # -----------------------
 if mode == "照会":
-    uploaded_file = st.file_uploader("照会したい画像をアップロード", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("照会したい画像をアップロード", type=["png"])
 
     if uploaded_file:
         image = Image.open(uploaded_file)
         extracted = extract_watermark(image)
 
-        st.write("抽出結果:", extracted)
+        st.write("抽出UUID:", extracted)
 
         result = conn.execute("""
         SELECT * FROM images WHERE uuid = ?
